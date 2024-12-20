@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using YARG.Core.Chart;
 using YARG.Core.Logging;
 using YARG.Core.Utility;
@@ -21,7 +22,7 @@ namespace YARG.Core.Engine
         protected const double STAR_POWER_BEAT_AMOUNT = 1.0 / STAR_POWER_MAX_BEATS;
 
         // Number of measures that SP phrases will grant when hit
-        protected const int    STAR_POWER_PHRASE_MEASURE_COUNT = 2;
+        protected const int STAR_POWER_PHRASE_MEASURE_COUNT = 2;
         protected const double STAR_POWER_PHRASE_AMOUNT = STAR_POWER_PHRASE_MEASURE_COUNT * STAR_POWER_MEASURE_AMOUNT;
 
         public delegate void NoteHitEvent(int noteIndex, TNoteType note);
@@ -38,36 +39,42 @@ namespace YARG.Core.Engine
 
         public delegate void CountdownChangeEvent(int measuresLeft, double countdownLength, double endTime);
 
-        public NoteHitEvent?    OnNoteHit;
+        public NoteHitEvent? OnNoteHit;
         public NoteMissedEvent? OnNoteMissed;
 
-        public StarPowerPhraseHitEvent?  OnStarPowerPhraseHit;
+        public StarPowerPhraseHitEvent? OnStarPowerPhraseHit;
         public StarPowerPhraseMissEvent? OnStarPowerPhraseMissed;
 
         public SustainStartEvent? OnSustainStart;
-        public SustainEndEvent?   OnSustainEnd;
+        public SustainEndEvent? OnSustainEnd;
 
         public CountdownChangeEvent? OnCountdownChange;
 
         protected SustainList<TNoteType> ActiveSustains = new(10);
 
-        protected          int[]  StarScoreThresholds { get; }
+        protected int[] StarScoreThresholds { get; }
         protected readonly double TicksPerSustainPoint;
-        protected readonly uint   SustainBurstThreshold;
+        protected readonly uint SustainBurstThreshold;
 
         public readonly TEngineStats EngineStats;
 
         protected readonly InstrumentDifficulty<TNoteType> Chart;
 
         protected readonly List<TNoteType> Notes;
-        protected readonly TEngineParams   EngineParameters;
+        protected readonly TEngineParams EngineParameters;
 
         public override BaseEngineParameters BaseParameters => EngineParameters;
-        public override BaseStats            BaseStats      => EngineStats;
+        public override BaseStats BaseStats => EngineStats;
+
+        protected int CurrentSectionIndex = 0;
+
+        protected int NextSectionIndex => CurrentSectionIndex;
+
+
 
         protected BaseEngine(InstrumentDifficulty<TNoteType> chart, SyncTrack syncTrack,
-            TEngineParams engineParameters, bool isChordSeparate, bool isBot)
-            : base(syncTrack, isChordSeparate, isBot)
+            TEngineParams engineParameters, bool isChordSeparate, bool isBot, SongChart FullChart)
+            : base(syncTrack, isChordSeparate, isBot, FullChart)
         {
             Chart = chart;
             Notes = Chart.Notes;
@@ -91,7 +98,7 @@ namespace YARG.Core.Engine
 
             EngineStats.TotalStarPowerPhrases = Chart.Phrases.Count((phrase) => phrase.Type == PhraseType.StarPower);
 
-            TicksPerSustainPoint = Resolution / (double) POINTS_PER_BEAT;
+            TicksPerSustainPoint = Resolution / (double)POINTS_PER_BEAT;
             SustainBurstThreshold = Resolution / SUSTAIN_BURST_FRACTION;
 
             // This method should only rely on the `Notes` property (which is assigned above).
@@ -102,7 +109,7 @@ namespace YARG.Core.Engine
             StarScoreThresholds = new int[multiplierThresholds.Length];
             for (int i = 0; i < multiplierThresholds.Length; i++)
             {
-                StarScoreThresholds[i] = (int) (BaseScore * multiplierThresholds[i]);
+                StarScoreThresholds[i] = (int)(BaseScore * multiplierThresholds[i]);
             }
 
             Solos = GetSoloSections();
@@ -300,6 +307,12 @@ namespace YARG.Core.Engine
                     }
                 }
             }
+
+            while (NextSectionIndex < FullChart.Sections.Count && CurrentTick >= FullChart.Sections[NextSectionIndex].Tick)
+            {
+                CurrentSectionIndex++;
+            }
+
         }
 
         public override void AllowStarPower(bool isAllowed)
@@ -467,7 +480,7 @@ namespace YARG.Core.Engine
 
                 bool dropped = false;
 
-                if(!CanSustainHold(note))
+                if (!CanSustainHold(note))
                 {
                     // Currently beind held by sustain drop leniency
                     if (sustain.IsLeniencyHeld)
@@ -505,7 +518,7 @@ namespace YARG.Core.Engine
                             sustain.Note.Tick, CurrentTime, dropped, isBurst);
 
                         double finalScore = CalculateSustainPoints(ref sustain, sustainTick);
-                        var points = (int) Math.Ceiling(finalScore);
+                        var points = (int)Math.Ceiling(finalScore);
 
                         AddScore(points);
 
@@ -522,7 +535,7 @@ namespace YARG.Core.Engine
                     {
                         double score = CalculateSustainPoints(ref sustain, sustainTick);
 
-                        var sustainPoints = (int) Math.Ceiling(score);
+                        var sustainPoints = (int)Math.Ceiling(score);
 
                         // It's ok to use multiplier here because PendingScore is only temporary to show the correct
                         // score on the UI.
@@ -693,7 +706,7 @@ namespace YARG.Core.Engine
 
             var currentSolo = Solos[CurrentSoloIndex];
 
-            double soloPercentage = currentSolo.NotesHit / (double) currentSolo.NoteCount;
+            double soloPercentage = currentSolo.NotesHit / (double)currentSolo.NoteCount;
 
             if (soloPercentage < 0.6)
             {
@@ -709,7 +722,7 @@ namespace YARG.Core.Engine
                 // Round down to nearest 50 (kinda just makes sense I think?)
                 points -= points % 50;
 
-                currentSolo.SoloBonus = (int) points;
+                currentSolo.SoloBonus = (int)points;
             }
 
             EngineStats.SoloBonuses += currentSolo.SoloBonus;
@@ -728,7 +741,7 @@ namespace YARG.Core.Engine
             for (int i = 0; i < ActiveSustains.Count; i++)
             {
                 ref var sustain = ref ActiveSustains[i];
-                EngineStats.PendingScore += (int) CalculateSustainPoints(ref sustain, tick);
+                EngineStats.PendingScore += (int)CalculateSustainPoints(ref sustain, tick);
             }
         }
 
@@ -758,7 +771,7 @@ namespace YARG.Core.Engine
 
                 sustain.BaseTick = Math.Clamp(baseTick, sustain.Note.Tick, sustain.Note.TickEnd);
                 sustain.BaseScore = sustainScore;
-                EngineStats.PendingScore += (int) sustainScore;
+                EngineStats.PendingScore += (int)sustainScore;
             }
         }
 
@@ -925,8 +938,9 @@ namespace YARG.Core.Engine
                 uint noteOneTickEnd = 0;
                 double noteOneTimeEnd = 0;
 
-                if (i > 0) {
-                    noteOne = notes[i-1];
+                if (i > 0)
+                {
+                    noteOne = notes[i - 1];
                     noteOneTickEnd = noteOne.TickEnd;
                     noteOneTimeEnd = noteOne.TimeEnd;
                 }

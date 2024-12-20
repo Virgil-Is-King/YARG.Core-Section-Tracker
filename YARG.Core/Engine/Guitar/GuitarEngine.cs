@@ -1,7 +1,13 @@
-using System;
+﻿using System;
+using System.Collections.ObjectModel;
+using System.ComponentModel.Design;
+using System.Linq;
+using System.Runtime.CompilerServices;
 using YARG.Core.Chart;
+using YARG.Core.Game;
 using YARG.Core.Input;
 using YARG.Core.Logging;
+using static YARG.Core.Engine.Guitar.EnhancedGuitarStats.FiveFretSectionTracker;
 
 namespace YARG.Core.Engine.Guitar
 {
@@ -41,16 +47,37 @@ namespace YARG.Core.Engine.Guitar
 
         protected double FrontEndExpireTime;
 
+
+
+
+
         protected GuitarEngine(InstrumentDifficulty<GuitarNote> chart, SyncTrack syncTrack,
-            GuitarEngineParameters engineParameters, bool isBot)
-            : base(chart, syncTrack, engineParameters, false, isBot)
+            GuitarEngineParameters engineParameters, bool isBot, SongChart FullChart)
+            : base(chart, syncTrack, engineParameters, false, isBot, FullChart)
         {
             StrumLeniencyTimer = new EngineTimer(engineParameters.StrumLeniency);
             HopoLeniencyTimer = new EngineTimer(engineParameters.HopoLeniency);
             StarPowerWhammyTimer = new EngineTimer(engineParameters.StarPowerWhammyBuffer);
 
+
+            EngineStats.SectionStatsTracker = new EnhancedGuitarStats.FiveFretSectionTracker(FullChart.Sections, chart);
+
             GetWaitCountdowns(Notes);
+
+
+
+            foreach (var note in Notes)
+            {
+                EngineStats.EnhancedFiveFretStats.TotalNotesInSong.CountNotesInSong(note);
+            }
+
+
+
+
+
+
         }
+
 
         public EngineTimer GetHopoLeniencyTimer() => HopoLeniencyTimer;
         public EngineTimer GetStrumLeniencyTimer() => StrumLeniencyTimer;
@@ -142,7 +169,7 @@ namespace YARG.Core.Engine.Guitar
                 i--;
 
                 double finalScore = CalculateSustainPoints(ref sustain, CurrentTick);
-                EngineStats.CommittedScore += (int) Math.Ceiling(finalScore);
+                EngineStats.CommittedScore += (int)Math.Ceiling(finalScore);
                 OnSustainEnd?.Invoke(sustain.Note, CurrentTime, sustain.HasFinishedScoring);
             }
 
@@ -254,6 +281,9 @@ namespace YARG.Core.Engine.Guitar
 
             WasNoteGhosted = false;
 
+            EngineStats.EnhancedFiveFretStats.TotalNotesHitInSong.CountNotesInSong(note);
+            EngineStats.SectionStatsTracker.SectionStatsArray[CurrentSectionIndex].TotalNotesHitInSection.CountNotesInSong(note);
+
             OnNoteHit?.Invoke(NoteIndex, note);
             base.HitNote(note);
         }
@@ -288,6 +318,9 @@ namespace YARG.Core.Engine.Guitar
             EngineStats.Combo = 0;
 
             UpdateMultiplier();
+
+            EngineStats.EnhancedFiveFretStats.TotalNotesMissedInSong.CountNotesInSong(note);
+            EngineStats.SectionStatsTracker.SectionStatsArray[CurrentSectionIndex].TotalNotesMissedInSection.CountNotesInSong(note);
 
             OnNoteMissed?.Invoke(NoteIndex, note);
             base.MissNote(note);
@@ -330,14 +363,14 @@ namespace YARG.Core.Engine.Guitar
             foreach (var note in Notes)
             {
                 score += POINTS_PER_NOTE * (1 + note.ChildNotes.Count);
-                score += (int) Math.Ceiling(note.TickLength / TicksPerSustainPoint);
+                score += (int)Math.Ceiling(note.TickLength / TicksPerSustainPoint);
 
                 // If a note is disjoint, each sustain is counted separately.
                 if (note.IsDisjoint)
                 {
                     foreach (var child in note.ChildNotes)
                     {
-                        score += (int) Math.Ceiling(child.TickLength / TicksPerSustainPoint);
+                        score += (int)Math.Ceiling(child.TickLength / TicksPerSustainPoint);
                     }
                 }
             }
@@ -347,12 +380,12 @@ namespace YARG.Core.Engine.Guitar
 
         protected void ToggleFret(int fret, bool active)
         {
-            ButtonMask = (byte) (active ? ButtonMask | (1 << fret) : ButtonMask & ~(1 << fret));
+            ButtonMask = (byte)(active ? ButtonMask | (1 << fret) : ButtonMask & ~(1 << fret));
         }
 
         public bool IsFretHeld(GuitarAction fret)
         {
-            return (ButtonMask & (1 << (int) fret)) != 0;
+            return (ButtonMask & (1 << (int)fret)) != 0;
         }
 
         protected static bool IsFretInput(GameInput input)
@@ -378,5 +411,23 @@ namespace YARG.Core.Engine.Guitar
                 _ => false,
             };
         }
+
+
+
+
+
+
+
     }
+
+
+
+
+
+
+
+
+
+
 }
+
