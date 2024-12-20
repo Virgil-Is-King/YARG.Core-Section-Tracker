@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 
 namespace YARG.Core.Chart
 {
@@ -13,10 +13,9 @@ namespace YARG.Core.Chart
 
         public GuitarNoteType Type { get; set; }
 
-        public bool IsStrum => Type == GuitarNoteType.Strum;
-        public bool IsHopo  => Type == GuitarNoteType.Hopo;
-        public bool IsTap   => Type == GuitarNoteType.Tap;
-
+        public bool IsStrum   => Type == GuitarNoteType.Strum;
+        public bool IsHopo    => Type == GuitarNoteType.Hopo;
+        public bool IsTap     => Type == GuitarNoteType.Tap;
         public bool IsSustain => TickLength > 0;
 
         public bool IsExtendedSustain => (GuitarFlags & GuitarNoteFlags.ExtendedSustain) != 0;

@@ -8,7 +8,7 @@ namespace YARG.Core.Engine.ProKeys.Engines
     public class YargProKeysEngine : ProKeysEngine
     {
         public YargProKeysEngine(InstrumentDifficulty<ProKeysNote> chart, SyncTrack syncTrack,
-            ProKeysEngineParameters engineParameters, bool isBot) : base(chart, syncTrack, engineParameters, isBot)
+            ProKeysEngineParameters engineParameters, bool isBot, SongChart FullChart) : base(chart, syncTrack, engineParameters, isBot, FullChart)
         {
         }
 

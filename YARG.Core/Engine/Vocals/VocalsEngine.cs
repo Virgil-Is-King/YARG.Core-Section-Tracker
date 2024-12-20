@@ -54,8 +54,8 @@ namespace YARG.Core.Engine.Vocals
         public uint LastSingTick { get; protected set; }
 
         protected VocalsEngine(InstrumentDifficulty<VocalNote> chart, SyncTrack syncTrack,
-            VocalsEngineParameters engineParameters, bool isBot)
-            : base(chart, syncTrack, engineParameters, false, isBot)
+            VocalsEngineParameters engineParameters, bool isBot, SongChart FullChart)
+            : base(chart, syncTrack, engineParameters, false, isBot, FullChart)
         {
         }
 

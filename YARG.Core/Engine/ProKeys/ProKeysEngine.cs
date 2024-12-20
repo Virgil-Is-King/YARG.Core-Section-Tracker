@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using YARG.Core.Chart;
 using YARG.Core.Input;
 using YARG.Core.Logging;
@@ -42,8 +42,8 @@ namespace YARG.Core.Engine.ProKeys
         protected ProKeysNote? FatFingerNote;
 
         protected ProKeysEngine(InstrumentDifficulty<ProKeysNote> chart, SyncTrack syncTrack,
-            ProKeysEngineParameters engineParameters, bool isBot)
-            : base(chart, syncTrack, engineParameters, true, isBot)
+            ProKeysEngineParameters engineParameters, bool isBot, SongChart FullChart)
+            : base(chart, syncTrack, engineParameters, true, isBot, FullChart)
         {
             ChordStaggerTimer = new(engineParameters.ChordStaggerWindow);
             FatFingerTimer = new(engineParameters.FatFingerWindow);

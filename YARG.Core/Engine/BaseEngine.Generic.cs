@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using YARG.Core.Chart;
 using YARG.Core.Logging;
 using YARG.Core.Utility;
@@ -65,9 +66,15 @@ namespace YARG.Core.Engine
         public override BaseEngineParameters BaseParameters => EngineParameters;
         public override BaseStats            BaseStats      => EngineStats;
 
+        protected int CurrentSectionIndex = 0;
+
+        protected int NextSectionIndex => CurrentSectionIndex;
+     
+
+
         protected BaseEngine(InstrumentDifficulty<TNoteType> chart, SyncTrack syncTrack,
-            TEngineParams engineParameters, bool isChordSeparate, bool isBot)
-            : base(syncTrack, isChordSeparate, isBot)
+            TEngineParams engineParameters, bool isChordSeparate, bool isBot, SongChart FullChart)
+            : base(syncTrack, isChordSeparate, isBot, FullChart)
         {
             Chart = chart;
             Notes = Chart.Notes;
@@ -300,6 +307,12 @@ namespace YARG.Core.Engine
                     }
                 }
             }
+
+            while (NextSectionIndex < FullChart.Sections.Count && CurrentTick >= FullChart.Sections[NextSectionIndex].Tick)
+            {
+                CurrentSectionIndex++;
+            }
+
         }
 
         public override void AllowStarPower(bool isAllowed)

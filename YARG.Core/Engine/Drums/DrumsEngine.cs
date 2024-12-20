@@ -26,8 +26,8 @@ namespace YARG.Core.Engine.Drums
         protected DrumsAction? Action;
 
         protected DrumsEngine(InstrumentDifficulty<DrumNote> chart, SyncTrack syncTrack,
-            DrumsEngineParameters engineParameters, bool isBot)
-            : base(chart, syncTrack, engineParameters, true, isBot)
+            DrumsEngineParameters engineParameters, bool isBot, SongChart FullChart)
+            : base(chart, syncTrack, engineParameters, true, isBot, FullChart)
         {
             GetWaitCountdowns(Notes);
         }
